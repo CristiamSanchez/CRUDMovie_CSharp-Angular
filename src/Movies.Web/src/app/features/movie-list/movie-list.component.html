@@ -1,0 +1,48 @@
+<div class="movie-list-container">
+  <header class="page-header">
+    <h1>Movies</h1>
+    <a routerLink="/movies/create" class="btn btn-primary">Add Movie</a>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading">Loading movies...</div>
+  } @else if (movies().length === 0) {
+    <div class="empty-state">
+      <p>No movies found.</p>
+      <a routerLink="/movies/create" class="btn btn-primary">Add your first movie</a>
+    </div>
+  } @else {
+    <table class="movie-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Genre</th>
+          <th>Release Year</th>
+          <th>Director</th>
+          <th>Rating</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (movie of movies(); track movie.id) {
+          <tr>
+            <td>{{ movie.title }}</td>
+            <td><span class="genre-badge">{{ movie.genre }}</span></td>
+            <td>{{ movie.releaseYear }}</td>
+            <td>{{ movie.director }}</td>
+            <td>{{ movie.rating }}</td>
+            <td class="actions">
+              <a [routerLink]="['/movies', movie.id]" class="btn btn-secondary btn-sm">View</a>
+              <a [routerLink]="['/movies', movie.id, 'edit']" class="btn btn-secondary btn-sm">Edit</a>
+              <button (click)="deleteMovie(movie.id)" class="btn btn-danger btn-sm">Delete</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

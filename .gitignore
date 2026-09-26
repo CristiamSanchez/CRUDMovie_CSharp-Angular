@@ -1,0 +1,20 @@
+node_modules
+dist
+.vite
+.DS_Store
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.db
+
+# Docker
+.env
+
+# IDE
+.vscode/
+*.swp
+*.swo

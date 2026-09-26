@@ -1,0 +1,53 @@
+<div class="movie-detail-container">
+  <header class="page-header">
+    <button type="button" (click)="goBack()" class="btn btn-secondary btn-sm">← Back</button>
+    <h1 *ngIf="!loading() && !notFound()">Movie Details</h1>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading">Loading movie...</div>
+  } @else if (notFound()) {
+    <div class="empty-state">
+      <p>Movie not found.</p>
+      <a routerLink="/movies" class="btn btn-primary">Back to Movies</a>
+    </div>
+  } @else if (movie(); as m) {
+    <div class="movie-detail-card">
+      <div class="detail-header">
+        <h2>{{ m.title }}</h2>
+        <span class="genre-badge">{{ m.genre }}</span>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Description</label>
+          <p>{{ m.description || 'No description available.' }}</p>
+        </div>
+
+        <div class="detail-item">
+          <label>Release Year</label>
+          <p>{{ m.releaseYear }}</p>
+        </div>
+
+        <div class="detail-item">
+          <label>Director</label>
+          <p>{{ m.director }}</p>
+        </div>
+
+        <div class="detail-item">
+          <label>Rating</label>
+          <p>{{ m.rating }}/10</p>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <a [routerLink]="['/movies', m.id, 'edit']" class="btn btn-secondary">Edit</a>
+        <button (click)="deleteMovie()" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  }
+</div>
