@@ -1,9 +1,4 @@
 <div class="movie-form-container">
-  <header class="page-header">
-    <button type="button" (click)="cancel()" class="btn btn-secondary btn-sm">← Back</button>
-    <h1>{{ isEditMode ? 'Edit Movie' : 'Create Movie' }}</h1>
-  </header>
-
   @if (error()) {
     <div class="alert alert-error">{{ error() }}</div>
   }
@@ -13,9 +8,12 @@
   }
 
   @if (loading() && !isEditMode) {
-    <div class="loading">Loading...</div>
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="movie-form">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="movie-form" novalidate>
       <div class="form-field">
         <label for="title">Title <span class="required">*</span></label>
         <input
@@ -24,9 +22,10 @@
           formControlName="title"
           maxlength="200"
           [class.error]="form.get('title')?.invalid && (form.get('title')?.dirty || form.get('title')?.touched)"
+          aria-describedby="title-error"
         />
         @if (getFieldError('title')) {
-          <span class="field-error">{{ getFieldError('title') }}</span>
+          <span id="title-error" class="field-error">{{ getFieldError('title') }}</span>
         }
       </div>
 
@@ -38,9 +37,10 @@
           maxlength="2000"
           rows="4"
           [class.error]="form.get('description')?.invalid && (form.get('description')?.dirty || form.get('description')?.touched)"
+          aria-describedby="description-error"
         ></textarea>
         @if (getFieldError('description')) {
-          <span class="field-error">{{ getFieldError('description') }}</span>
+          <span id="description-error" class="field-error">{{ getFieldError('description') }}</span>
         }
       </div>
 
@@ -50,6 +50,7 @@
           id="genre"
           formControlName="genre"
           [class.error]="form.get('genre')?.invalid && (form.get('genre')?.dirty || form.get('genre')?.touched)"
+          aria-describedby="genre-error"
         >
           <option value="">Select a genre</option>
           @for (genre of genres; track genre) {
@@ -57,7 +58,7 @@
           }
         </select>
         @if (getFieldError('genre')) {
-          <span class="field-error">{{ getFieldError('genre') }}</span>
+          <span id="genre-error" class="field-error">{{ getFieldError('genre') }}</span>
         }
       </div>
 
@@ -71,9 +72,10 @@
             min="1888"
             max="2100"
             [class.error]="form.get('releaseYear')?.invalid && (form.get('releaseYear')?.dirty || form.get('releaseYear')?.touched)"
+            aria-describedby="releaseYear-error"
           />
           @if (getFieldError('releaseYear')) {
-            <span class="field-error">{{ getFieldError('releaseYear') }}</span>
+            <span id="releaseYear-error" class="field-error">{{ getFieldError('releaseYear') }}</span>
           }
         </div>
 
@@ -87,9 +89,10 @@
             min="0"
             max="10"
             [class.error]="form.get('rating')?.invalid && (form.get('rating')?.dirty || form.get('rating')?.touched)"
+            aria-describedby="rating-error"
           />
           @if (getFieldError('rating')) {
-            <span class="field-error">{{ getFieldError('rating') }}</span>
+            <span id="rating-error" class="field-error">{{ getFieldError('rating') }}</span>
           }
         </div>
       </div>
@@ -102,14 +105,15 @@
           formControlName="director"
           maxlength="100"
           [class.error]="form.get('director')?.invalid && (form.get('director')?.dirty || form.get('director')?.touched)"
+          aria-describedby="director-error"
         />
         @if (getFieldError('director')) {
-          <span class="field-error">{{ getFieldError('director') }}</span>
+          <span id="director-error" class="field-error">{{ getFieldError('director') }}</span>
         }
       </div>
 
       <div class="form-actions">
-        <button type="button" (click)="cancel()" class="btn btn-secondary" [disabled]="loading()">Cancel</button>
+        <button type="button" (click)="onCancelClick()" class="btn btn-secondary" [disabled]="loading()">Cancel</button>
         <button type="submit" class="btn btn-primary" [disabled]="loading() || form.invalid">
           @if (loading()) {
             <span class="btn-spinner"></span>

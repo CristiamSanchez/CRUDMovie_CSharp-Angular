@@ -1,13 +1,15 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Movie } from '../../core/models/movie.model';
 import { MovieService } from '../../core/services/movie.service';
+import { MovieFormComponent } from '../movie-form/movie-form.component';
+import { ModalService } from '../../shared/components/modal/modal.service';
 
 @Component({
   selector: 'app-movie-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   templateUrl: './movie-detail.component.html',
   styleUrl: './movie-detail.component.css'
 })
@@ -15,11 +17,13 @@ export class MovieDetailComponent implements OnInit {
   private readonly movieService = inject(MovieService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly modalService = inject(ModalService);
 
   movie = signal<Movie | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
   notFound = signal(false);
+  deleting = signal(false);
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -50,6 +54,23 @@ export class MovieDetailComponent implements OnInit {
     });
   }
 
+  openEditModal(): void {
+    const movie = this.movie();
+    if (!movie) return;
+
+    this.modalService.open({
+      component: MovieFormComponent,
+      title: 'Edit Movie',
+      size: 'md',
+      data: {
+        isEditMode: true,
+        movieId: movie.id,
+        onSave: (result: { id: number }) => this.loadMovie(movie.id),
+        onCancel: () => {}
+      } as Partial<MovieFormComponent>
+    });
+  }
+
   deleteMovie(): void {
     const movie = this.movie();
     if (!movie) return;
@@ -58,12 +79,15 @@ export class MovieDetailComponent implements OnInit {
       return;
     }
 
+    this.deleting.set(true);
+
     this.movieService.delete(movie.id).subscribe({
       next: () => {
         this.router.navigate(['/movies']);
       },
       error: (err) => {
         this.error.set('Failed to delete movie. Please try again.');
+        this.deleting.set(false);
         console.error('Error deleting movie:', err);
       }
     });

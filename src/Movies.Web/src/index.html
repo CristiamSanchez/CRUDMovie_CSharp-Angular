@@ -6,6 +6,28 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    (function() {
+      try {
+        var theme = localStorage.getItem('movie-crud-theme');
+        // Only apply data-theme if user explicitly chose dark mode
+        // Default (no attribute) = gray theme
+        if (theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          // Remove any existing data-theme attribute for gray theme default
+          document.documentElement.removeAttribute('data-theme');
+          // Clear invalid localStorage values
+          if (theme && theme !== 'dark') {
+            localStorage.removeItem('movie-crud-theme');
+          }
+        }
+      } catch (e) {
+        // No data-theme attribute = gray theme default
+        document.documentElement.removeAttribute('data-theme');
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

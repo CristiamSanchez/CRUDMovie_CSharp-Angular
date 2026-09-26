@@ -1,15 +1,30 @@
 <header class="app-header">
   <nav class="nav">
-    <a routerLink="/movies" class="nav-brand">🎬 Movie CRUD</a>
+    <a routerLink="/movies" class="nav-brand">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <path d="M8 21h8M12 17v4"></path>
+      </svg>
+      <span>Movie CRUD</span>
+    </a>
     <a routerLink="/movies" class="nav-link">Movies</a>
-    <a routerLink="/movies/create" class="nav-link">Add Movie</a>
+    <div class="theme-switch">
+      <span class="theme-label" [class.active]="currentTheme() === 'light'">Light</span>
+      <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="'Switch to ' + (currentTheme() === 'dark' ? 'dark' : 'light') + ' mode'" [attr.aria-pressed]="currentTheme() === 'dark'">
+        <span class="toggle-thumb"></span>
+      </button>
+      <span class="theme-label" [class.active]="currentTheme() === 'dark'">Dark</span>
+    </div>
   </nav>
 </header>
 
 <main class="app-main">
+  <div class="matrix-bg" aria-hidden="true"></div>
   <router-outlet />
 </main>
 
 <footer class="app-footer">
   <p>Simple Movie CRUD - Angular 22 + ASP.NET Core 10 + PostgreSQL</p>
 </footer>
+
+<app-modal></app-modal>

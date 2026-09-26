@@ -2,6 +2,12 @@
 
 A simple full-stack Movie CRUD application built with **ASP.NET Core 10** (Web API), **Angular 22** (frontend), and **PostgreSQL 16** (database).
 
+This project was developed with the assistance of **OpenCode AI** as a development assistant, using:
+- **C# / ASP.NET Core** for the backend REST API
+- **Angular** (standalone components, reactive forms) for the frontend
+- **PostgreSQL** for data persistence
+- **Docker** for containerized database
+
 ---
 
 ## Technology Stack
@@ -13,6 +19,14 @@ A simple full-stack Movie CRUD application built with **ASP.NET Core 10** (Web A
 | Database | PostgreSQL 16 (Docker) |
 | API Documentation | Swagger / OpenAPI (Swashbuckle) |
 | Containerization | Docker Compose (PostgreSQL only) |
+
+---
+
+## Screenshots
+
+![Movie CRUD Application](docs/screenshots/movie-crud.png)
+
+*The movie list view with card-based layout, genre badges, and modal-based create/edit forms.*
 
 ---
 
@@ -42,6 +56,8 @@ Movies/
 ├── docker-compose.yml         # PostgreSQL container definition
 ├── Movies.sln                 # .NET Solution
 ├── README.md                  # This file
+├── docs/
+│   └── screenshots/           # Project screenshots
 └── src/
     ├── Movies.Api/            # ASP.NET Core Web API
     │   ├── Controllers/       # API Controllers
@@ -62,12 +78,15 @@ Movies/
         │   │   ├── features/
         │   │   │   ├── movie-list/    # Movie list component
         │   │   │   ├── movie-detail/  # Movie detail component
-        │   │   │   └── movie-form/    # Create/Edit form component
+        │   │   │   └── movie-form/    # Create/Edit form component (modal)
+        │   │   ├── shared/
+        │   │   │   └── components/
+        │   │   │       └── modal/     # Reusable modal component
         │   │   ├── app.config.ts      # App configuration
         │   │   ├── app.routes.ts      # Routing configuration
         │   │   ├── app.ts             # Root component
         │   │   ├── app.html           # Root template
-        │   │   └── app.css            # Global styles
+        │   │   └── app.css            # Global styles (dark/light theme)
         │   ├── environments/
         │   │   ├── environment.ts
         │   │   └── environment.development.ts
@@ -432,6 +451,8 @@ npx ng build
 - **Lazy-loaded routes** - Each feature loads on demand
 - **Environment config** - API URL in `src/Movies.Web/src/environments/environment.ts`
 - **PostgreSQL only in Docker** - API and Angular run locally for easier debugging
+- **Modal-based forms** - Create/Edit use accessible modal dialogs with focus trapping
+- **Dark/Light theme** - Automatic theme detection via CSS `prefers-color-scheme`
 
 ---
 

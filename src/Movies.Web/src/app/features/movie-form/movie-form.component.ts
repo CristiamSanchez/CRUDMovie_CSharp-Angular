@@ -1,9 +1,9 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
 import { Genre, CreateMovieRequest, UpdateMovieRequest } from '../../core/models/movie.model';
 import { MovieService } from '../../core/services/movie.service';
+import { ModalService } from '../../shared/components/modal/modal.service';
 
 @Component({
   selector: 'app-movie-form',
@@ -12,19 +12,21 @@ import { MovieService } from '../../core/services/movie.service';
   templateUrl: './movie-form.component.html',
   styleUrl: './movie-form.component.css'
 })
-export class MovieFormComponent implements OnInit {
+export class MovieFormComponent implements OnInit, OnChanges {
   private readonly fb = inject(FormBuilder);
   private readonly movieService = inject(MovieService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly modalService = inject(ModalService);
+
+  // Modal inputs
+  @Input() isEditMode = false;
+  @Input() movieId: number | null = null;
+  @Input() onSave?: (result: { id: number }) => void;
+  @Input() onCancel?: () => void;
 
   form: FormGroup;
   loading = signal(false);
   error = signal<string | null>(null);
   submitError = signal<string | null>(null);
-
-  isEditMode = false;
-  movieId: number | null = null;
 
   genres: Genre[] = ['Action', 'Comedy', 'Drama', 'Horror', 'SciFi', 'Documentary', 'Animation', 'Thriller', 'Romance', 'Other'];
 
@@ -40,16 +42,23 @@ export class MovieFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (idParam) {
-      this.isEditMode = true;
-      this.movieId = Number(idParam);
+    if (this.isEditMode && this.movieId) {
       this.loadMovie(this.movieId);
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['movieId'] && this.isEditMode && this.movieId) {
+      this.loadMovie(this.movieId);
+    } else if (changes['isEditMode'] && !this.isEditMode) {
+      this.resetForm();
     }
   }
 
   loadMovie(id: number): void {
     this.loading.set(true);
+    this.error.set(null);
+
     this.movieService.getById(id).subscribe({
       next: (movie) => {
         this.form.patchValue({
@@ -72,6 +81,19 @@ export class MovieFormComponent implements OnInit {
         console.error('Error loading movie:', err);
       }
     });
+  }
+
+  resetForm(): void {
+    this.form.reset({
+      title: '',
+      description: '',
+      genre: '',
+      releaseYear: '',
+      director: '',
+      rating: ''
+    });
+    this.error.set(null);
+    this.submitError.set(null);
   }
 
   onSubmit(): void {
@@ -97,7 +119,8 @@ export class MovieFormComponent implements OnInit {
       this.movieService.update(this.movieId, requestData).subscribe({
         next: (movie) => {
           this.loading.set(false);
-          this.router.navigate(['/movies', movie.id]);
+          this.onSave?.({ id: movie.id });
+          this.modalService.notifySave({ id: movie.id });
         },
         error: (err) => {
           this.loading.set(false);
@@ -109,7 +132,8 @@ export class MovieFormComponent implements OnInit {
       this.movieService.create(requestData).subscribe({
         next: (movie) => {
           this.loading.set(false);
-          this.router.navigate(['/movies', movie.id]);
+          this.onSave?.({ id: movie.id });
+          this.modalService.notifySave({ id: movie.id });
         },
         error: (err) => {
           this.loading.set(false);
@@ -120,12 +144,9 @@ export class MovieFormComponent implements OnInit {
     }
   }
 
-  cancel(): void {
-    if (this.isEditMode && this.movieId) {
-      this.router.navigate(['/movies', this.movieId]);
-    } else {
-      this.router.navigate(['/movies']);
-    }
+  onCancelClick(): void {
+    this.onCancel?.();
+    this.modalService.onClosed();
   }
 
   private extractErrorMessage(err: unknown): string {

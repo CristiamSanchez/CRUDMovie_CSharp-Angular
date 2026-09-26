@@ -1,7 +1,16 @@
 <div class="movie-list-container">
   <header class="page-header">
-    <h1>Movies</h1>
-    <a routerLink="/movies/create" class="btn btn-primary">Add Movie</a>
+    <div class="header-content">
+      <h1>Movies</h1>
+      <p class="movie-count">{{ movies().length }} movie{{ movies().length !== 1 ? 's' : '' }}</p>
+    </div>
+    <button type="button" (click)="openCreateModal()" class="btn btn-primary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add Movie
+    </button>
   </header>
 
   @if (error()) {
@@ -9,40 +18,83 @@
   }
 
   @if (loading()) {
-    <div class="loading">Loading movies...</div>
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading movies...</p>
+    </div>
   } @else if (movies().length === 0) {
     <div class="empty-state">
-      <p>No movies found.</p>
-      <a routerLink="/movies/create" class="btn btn-primary">Add your first movie</a>
+      <svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <path d="M8 21h8M12 17v4"></path>
+      </svg>
+      <h2>No movies found</h2>
+      <p>Get started by adding your first movie to the collection.</p>
+      <button type="button" (click)="openCreateModal()" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add Your First Movie
+      </button>
     </div>
   } @else {
-    <table class="movie-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Genre</th>
-          <th>Release Year</th>
-          <th>Director</th>
-          <th>Rating</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (movie of movies(); track movie.id) {
-          <tr>
-            <td>{{ movie.title }}</td>
-            <td><span class="genre-badge">{{ movie.genre }}</span></td>
-            <td>{{ movie.releaseYear }}</td>
-            <td>{{ movie.director }}</td>
-            <td>{{ movie.rating }}</td>
-            <td class="actions">
-              <a [routerLink]="['/movies', movie.id]" class="btn btn-secondary btn-sm">View</a>
-              <a [routerLink]="['/movies', movie.id, 'edit']" class="btn btn-secondary btn-sm">Edit</a>
-              <button (click)="deleteMovie(movie.id)" class="btn btn-danger btn-sm">Delete</button>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <div class="movie-grid">
+      @for (movie of movies(); track movie.id) {
+        <article class="movie-card" [class.deleting]="deletingId() === movie.id">
+          <div class="movie-card-header">
+            <h3 class="movie-title">{{ movie.title }}</h3>
+            <span class="genre-badge">{{ movie.genre }}</span>
+          </div>
+
+          <div class="movie-meta">
+            <div class="meta-item">
+              <span class="meta-label">Year</span>
+              <span class="meta-value">{{ movie.releaseYear }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Director</span>
+              <span class="meta-value">{{ movie.director }}</span>
+            </div>
+            <div class="meta-item rating">
+              <span class="meta-label">Rating</span>
+              <span class="meta-value">{{ movie.rating }}/10</span>
+            </div>
+          </div>
+
+          @if (movie.description) {
+            <p class="movie-description">{{ movie.description }}</p>
+          }
+
+          <div class="movie-actions">
+            <button type="button" (click)="viewMovie(movie)" class="btn btn-secondary btn-sm" aria-label="View {{ movie.title }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              View
+            </button>
+            <button type="button" (click)="openEditModal(movie)" class="btn btn-secondary btn-sm" aria-label="Edit {{ movie.title }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Edit
+            </button>
+            <button type="button" (click)="deleteMovie(movie.id)" class="btn btn-danger btn-sm" [disabled]="deletingId() === movie.id" aria-label="Delete {{ movie.title }}">
+              @if (deletingId() === movie.id) {
+                <span class="btn-spinner"></span>
+              } @else {
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Delete
+              }
+            </button>
+          </div>
+        </article>
+      }
+    </div>
   }
 </div>
