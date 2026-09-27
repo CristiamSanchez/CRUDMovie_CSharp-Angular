@@ -15,10 +15,11 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should render the header with brand and theme toggle', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, Movies.Web');
+    expect(compiled.querySelector('.nav-brand')?.textContent).toContain('Movie CRUD');
+    expect(compiled.querySelector('.theme-toggle')).not.toBeNull();
   });
 });

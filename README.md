@@ -1,5 +1,8 @@
 # Movie CRUD Application
 
+[![CI](https://github.com/CristiamSanchez/CRUDMovie_CSharp-Angular/actions/workflows/ci.yml/badge.svg)](https://github.com/CristiamSanchez/CRUDMovie_CSharp-Angular/actions/workflows/ci.yml)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-demo-blue)](https://cristiamsanchez.github.io/CRUDMovie_CSharp-Angular/)
+
 A simple full-stack Movie CRUD application built with **ASP.NET Core 10** (Web API), **Angular 22** (frontend), and **PostgreSQL 16** (database).
 
 This project was developed with the assistance of **OpenCode AI** as a development assistant, using:
@@ -19,6 +22,7 @@ This project was developed with the assistance of **OpenCode AI** as a developme
 | Database | PostgreSQL 16 (Docker) |
 | API Documentation | Swagger / OpenAPI (Swashbuckle) |
 | Containerization | Docker Compose (PostgreSQL only) |
+| CI / CD | GitHub Actions (CI validation + GitHub Pages deployment) |
 
 ---
 
@@ -53,8 +57,12 @@ Movies/
 ├── .gitignore                 # Git ignore rules
 ├── .env                       # Local environment variables (NOT committed)
 ├── .env.example               # Template for environment variables
+├── .github/
+│   └── workflows/
+│       ├── ci.yml             # CI: backend + frontend validation (push/PR to main)
+│       └── deploy-pages.yml   # Deploys the Angular build to GitHub Pages
 ├── docker-compose.yml         # PostgreSQL container definition
-├── Movies.sln                 # .NET Solution
+├── Movies.slnx                # .NET Solution
 ├── README.md                  # This file
 ├── docs/
 │   └── screenshots/           # Project screenshots
@@ -88,8 +96,9 @@ Movies/
         │   │   ├── app.html           # Root template
         │   │   └── app.css            # Global styles (dark/light theme)
         │   ├── environments/
-        │   │   ├── environment.ts
-        │   │   └── environment.development.ts
+        │   │   ├── environment.ts            # Local build (localhost API)
+        │   │   ├── environment.development.ts
+        │   │   └── environment.pages.ts      # GitHub Pages build (no backend)
         │   ├── main.ts
         │   ├── index.html
         │   └── styles.css
@@ -275,8 +284,9 @@ npx ng serve
 # Production build
 npx ng build --configuration production
 
-# Type-check
-npx tsc --noEmit
+# Type-check (the root tsconfig.json has no inputs, so target the projects explicitly)
+npx tsc --noEmit -p tsconfig.app.json
+npx tsc --noEmit -p tsconfig.spec.json
 
 # Run unit tests
 npx ng test
@@ -449,10 +459,75 @@ npx ng build
 - **No global state management** - Services provided in root injector
 - **No global error interceptor** - Component-level inline error handling
 - **Lazy-loaded routes** - Each feature loads on demand
-- **Environment config** - API URL in `src/Movies.Web/src/environments/environment.ts`
+- **Environment config** - Local API URL in `src/Movies.Web/src/environments/environment.ts`; the GitHub Pages build uses `environment.pages.ts`, selected by the `production-pages` Angular build configuration
 - **PostgreSQL only in Docker** - API and Angular run locally for easier debugging
 - **Modal-based forms** - Create/Edit use accessible modal dialogs with focus trapping
 - **Dark/Light theme** - Automatic theme detection via CSS `prefers-color-scheme`
+
+---
+
+## Continuous Integration (GitHub Actions)
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — runs on every **push to `main`** and every **pull request to `main`**.
+
+**Backend job** (ubuntu-latest, .NET 10 SDK):
+1. `dotnet restore Movies.slnx`
+2. `dotnet build Movies.slnx --no-restore`
+3. **Integration smoke test** against a **PostgreSQL 16 service container** (healthchecked with `pg_isready`): the API is started with a disposable test connection string — startup applies EF Core migrations — then the workflow verifies the REST endpoints end to end: `GET` returns an array (200), a valid `POST` creates a movie (201), an invalid `POST` is rejected (400), and `DELETE` removes it (204).
+
+**Frontend job** (ubuntu-latest, Node.js 24):
+1. `npm ci`
+2. Type-check: `npx tsc --noEmit -p tsconfig.app.json` and `npx tsc --noEmit -p tsconfig.spec.json`
+3. Unit tests: `npx ng test`
+4. Production build: `npx ng build --configuration production`
+
+**Current test coverage (honestly reported — no fabricated results):**
+- The **backend has no unit/integration test projects**, so CI verifies restore, build, and a real database-backed integration smoke test rather than unit tests.
+- The **frontend** has one unit-test file (`src/app/app.spec.ts`, 2 tests) covering the app shell (component creation, header rendering).
+
+**Security:**
+- No secrets, API keys, or production credentials in workflows. The PostgreSQL service container uses disposable CI-only values (`movies_ci` / `movies_ci_password`) passed as workflow environment variables.
+- The repository `.env` file is never used by CI (it is gitignored).
+- The workflow runs with read-only permissions (`permissions: contents: read`).
+
+---
+
+## Deployment (GitHub Pages)
+
+Workflow: [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) — runs on **push to `main`**, or manually via *Actions → Deploy to GitHub Pages → Run workflow*.
+
+**Live site:** https://cristiamsanchez.github.io/CRUDMovie_CSharp-Angular/
+
+### How it works
+1. Builds the frontend with the `production-pages` Angular configuration, which sets **`baseHref: /CRUDMovie_CSharp-Angular/`** (base href, not `deploy-url`) and swaps `environment.ts` → `environment.pages.ts`.
+2. Copies `index.html` to `404.html` so client-side routes survive refreshes and deep links.
+3. Publishes the static build with the official GitHub Pages actions: `actions/configure-pages` → `actions/upload-pages-artifact` → `actions/deploy-pages`.
+
+### What is hosted where
+
+| Component | Local | GitHub Pages |
+|-----------|-------|--------------|
+| Angular frontend | ✅ `http://localhost:4200` | ✅ static production build |
+| ASP.NET Core API | ✅ `http://localhost:5148` | ❌ not possible |
+| PostgreSQL 16 | ✅ Docker, `localhost:5435` | ❌ not possible |
+
+**PostgreSQL runs locally in Docker** (`docker compose up -d`), and **GitHub Pages hosts only the Angular static frontend**. Pages cannot run ASP.NET Core or PostgreSQL.
+
+### Demo build (no public backend yet)
+
+No public API exists for this project yet, so the Pages build uses `src/Movies.Web/src/environments/environment.pages.ts` with an **empty `apiUrl`**: the deployed site never points at localhost and no backend URL is invented. The result is a **UI/demo build** — the full interface (layout, theme switch, routing) works, but movie data requests fail and the app shows its inline *"Failed to load movies"* error.
+
+**Full CRUD online requires a separately hosted ASP.NET Core backend and PostgreSQL database.** To enable it:
+1. Host the API + PostgreSQL externally (e.g. Azure, Railway, Render, a VPS).
+2. Set the public API URL in `environment.pages.ts` (e.g. `apiUrl: 'https://api.example.com/api'`).
+3. Allow the Pages origin in the API CORS policy (`Program.cs`, currently allows only `http://localhost:4200`).
+4. Push to `main` — the workflow rebuilds and redeploys.
+
+### Required manual GitHub settings (one time)
+
+1. **Settings → Pages → Build and deployment → Source**: select **GitHub Actions**.
+2. **Settings → Actions → General**: GitHub Actions enabled (default for public repositories).
+3. Push the workflows to `main` and watch the run in the **Actions** tab; the deploy job exposes the site URL through its `github-pages` environment.
 
 ---
 

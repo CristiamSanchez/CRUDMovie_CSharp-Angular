@@ -1,0 +1,80 @@
+name: Deploy to GitHub Pages
+
+# GitHub Pages can only host the static Angular frontend.
+# The ASP.NET Core API and PostgreSQL run locally (see README - Deployment section).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel an in-flight deployment; queue new ones instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Angular for Pages
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Movies.Web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: src/Movies.Web/package-lock.json
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `production-pages` (angular.json) sets baseHref=/CRUDMovie_CSharp-Angular/
+      # and swaps in environment.pages.ts (empty apiUrl - no localhost, no
+      # invented backend URL; the API URL is configurable there).
+      - name: Build production frontend
+        run: npx ng build --configuration production-pages
+
+      - name: Verify base href and no localhost API
+        run: |
+          set -euo pipefail
+          grep -q '<base href="/CRUDMovie_CSharp-Angular/">' dist/Movies.Web/browser/index.html
+          if grep -rq "localhost:5148" dist/Movies.Web/browser; then
+            echo "::error::The Pages build must not reference the local API URL"
+            exit 1
+          fi
+
+      # GitHub Pages serves 404.html for unknown paths; reuse index.html so
+      # client-side routes (e.g. /movies/5) survive a refresh or deep link.
+      - name: Add SPA fallback (404.html)
+        run: cp dist/Movies.Web/browser/index.html dist/Movies.Web/browser/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: src/Movies.Web/dist/Movies.Web/browser
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

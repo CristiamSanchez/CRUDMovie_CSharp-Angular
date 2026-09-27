@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege: CI only reads the repository.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend - restore, build, integration smoke test
+    runs-on: ubuntu-latest
+
+    # Disposable PostgreSQL for database integration verification only.
+    # Test-only credentials defined here in the workflow - never production
+    # credentials, never the repository .env file (which is gitignored).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: movies_ci
+          POSTGRES_USER: movies_ci
+          POSTGRES_PASSWORD: movies_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U movies_ci -d movies_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Test-only connection string for the service container above.
+      ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=movies_ci;Username=movies_ci;Password=movies_ci_password"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Movies.slnx
+
+      - name: Build
+        run: dotnet build Movies.slnx --no-restore
+
+      # There are currently no backend unit/integration test projects, so instead of
+      # fabricating test results CI starts the real API against the disposable
+      # PostgreSQL service container: startup applies EF Core migrations, then the
+      # REST endpoints are exercised end to end (read, create, validation, delete).
+      - name: Integration smoke test (API + PostgreSQL)
+        run: |
+          set -euo pipefail
+
+          dotnet run --project src/Movies.Api --no-build --no-launch-profile \
+            --urls http://localhost:5188 > api.log 2>&1 &
+          API_PID=$!
+
+          echo "Waiting for the API to start (EF Core migrations run on startup)..."
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:5188/api/movies > /dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$API_PID" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            echo "::error::API did not become ready against the test database"
+            cat api.log
+            exit 1
+          fi
+
+          echo "GET /api/movies -> expects 200 with an array"
+          curl -fsS http://localhost:5188/api/movies | python3 -c 'import json, sys; sys.exit(0 if isinstance(json.load(sys.stdin), list) else 1)'
+
+          echo "POST /api/movies (valid payload) -> expects 201"
+          CREATED=$(curl -fsS -X POST http://localhost:5188/api/movies \
+            -H "Content-Type: application/json" \
+            -d '{"title":"CI Smoke Test","description":"Created by the CI workflow","genre":"Action","releaseYear":2024,"director":"CI","rating":7.5}')
+          ID=$(echo "$CREATED" | python3 -c 'import json, sys; print(json.load(sys.stdin).get("id", ""))')
+          if [ -z "$ID" ] || [ "$ID" = "null" ]; then
+            echo "::error::Create did not return an id"
+            cat api.log
+            exit 1
+          fi
+
+          echo "POST /api/movies (invalid payload) -> expects 400"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:5188/api/movies \
+            -H "Content-Type: application/json" -d '{"title":""}')
+          if [ "$CODE" != "400" ]; then
+            echo "::error::Expected 400 for an invalid payload, got $CODE"
+            exit 1
+          fi
+
+          echo "DELETE /api/movies/$ID -> expects 204"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "http://localhost:5188/api/movies/$ID")
+          if [ "$CODE" != "204" ]; then
+            echo "::error::Expected 204 for delete, got $CODE"
+            exit 1
+          fi
+
+          kill "$API_PID"
+          echo "Backend integration smoke test passed."
+
+  frontend:
+    name: Frontend - type-check, unit tests, production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Movies.Web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: src/Movies.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The root tsconfig.json has no inputs (files: [] + references), so the
+      # projects are type-checked explicitly.
+      - name: Type-check
+        run: |
+          npx tsc --noEmit -p tsconfig.app.json
+          npx tsc --noEmit -p tsconfig.spec.json
+
+      - name: Unit tests
+        run: npx ng test
+
+      - name: Production build
+        run: npx ng build --configuration production
