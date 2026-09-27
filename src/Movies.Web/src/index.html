@@ -8,24 +8,17 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script>
     (function() {
+      // Always set data-theme explicitly so [data-theme] selectors work.
+      // Default is 'light' = gray theme; 'dark' is opt-in via toggle.
+      var theme = 'light';
       try {
-        var theme = localStorage.getItem('movie-crud-theme');
-        // Only apply data-theme if user explicitly chose dark mode
-        // Default (no attribute) = gray theme
-        if (theme === 'dark') {
-          document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-          // Remove any existing data-theme attribute for gray theme default
-          document.documentElement.removeAttribute('data-theme');
-          // Clear invalid localStorage values
-          if (theme && theme !== 'dark') {
-            localStorage.removeItem('movie-crud-theme');
-          }
+        if (localStorage.getItem('movie-crud-theme') === 'dark') {
+          theme = 'dark';
         }
       } catch (e) {
-        // No data-theme attribute = gray theme default
-        document.documentElement.removeAttribute('data-theme');
+        // Storage unavailable - keep default gray theme
       }
+      document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
 </head>

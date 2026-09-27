@@ -48,11 +48,8 @@ export class ThemeService {
 
   applyTheme(theme: ThemeMode): void {
     if (!this.isBrowser) return;
-    if (theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      // Gray theme is default - remove attribute
-      document.documentElement.removeAttribute('data-theme');
-    }
+    // Always set the attribute explicitly: 'light' = gray default theme,
+    // 'dark' = opt-in dark mode. Keeps [data-theme] selectors reliable.
+    document.documentElement.setAttribute('data-theme', theme);
   }
 }
